@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+service Contest{
+    // A user must first register and acquire a valid user ID and PIN and session key
+    // NOTE: every time you will get a random session key, all answer must submit along with this key
+    // this provent user login in multiply times and submit multiply answers
+    rpc login (LoginRequest) returns (UserLoginResponse);
+
+    // Requests a full update of the user data.
+    rpc submit_answer (AnswerRequest) returns (AnswerResponse);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Request Messsages
+//////////////////////////////////////////////////////////////////////////////
+
+// A request with just the user's credentials.
+message LoginRequest {
+    int32 user_id = 1;
+    string user_pin = 2;
+}
+
+message AnswerRequest {
+    int32 user_id = 1;
+    string user_pin = 2;
+    string session_key = 3;
+    int64 sequence = 4;
+    repeated double positions = 5;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Response Messsages
+//////////////////////////////////////////////////////////////////////////////
+message UserLoginResponse {
+    int32 user_id = 1;
+    string user_pin = 2;
+    string session_key = 3;
+    double init_capital = 4;
+    bool success = 5;
+    string reason = 6;
+}
+
+message AnswerResponse {
+    // true means answer accepted, if failed, the reason field indicate the reason
+    bool accepted = 1;
+    string reason = 2;
+}
