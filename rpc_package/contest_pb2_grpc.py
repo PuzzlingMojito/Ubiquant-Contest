@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import contest_pb2 as contest__pb2
+from rpc_package import contest_pb2 as contest__pb2
 
 
 class ContestStub(object):
