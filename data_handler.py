@@ -15,35 +15,37 @@ class DataHandler:
     def __init__(self):
         self.sequence = [-1]
         self.capital = []
+        self.session_key = None
         self.tickers = {field: [] for field in fields.keys()}
-        self.has_next_question = True
-        self.question_client = question_pb2_grpc.QuestionStub(channel=grpc.insecure_channel(contest))
-        self.contest_client = contest_pb2_grpc.ContestStub(channel=grpc.insecure_channel(question))
+        self.question_conn = grpc.insecure_channel(question)
+        self.contest_conn = grpc.insecure_channel(contest)
 
     def login(self):
-        response = self.contest_client.login(contest_pb2.LoginRequest(user_id=9, user_pin=passwd))
-        print(response)
+        client = contest_pb2_grpc.ContestStub(channel=self.contest_conn)
+        response = client.login(contest_pb2.LoginRequest(user_id=9, user_pin=passwd))
+        self.session_key = response.session_key
 
     def get(self):
         # TODO: has_next_question
+        client = question_pb2_grpc.QuestionStub(channel=self.question_conn)
         while True:
             sequence = self.sequence[-1] + 1
-            response = self.question_client.get_question(question_pb2.QuestionRequest(user_id=9, sequence=sequence))
+            response = client.get_question(question_pb2.QuestionRequest(user_id=9, sequence=sequence))
             if response.sequence == -1:
                 time.sleep(0.1)
             else:
-                dict_obj = MessageToDict(response)
-                self.sequence.append(dict_obj['sequence'])
-                self.capital.append(dict_obj['capital'])
-                data = np.array([info['values'][2:] for info in dict_obj['dailystk']])
+                response = MessageToDict(response)
+                self.sequence.append(response['sequence'])
+                self.capital.append(response['capital'])
+                data = np.array([i['values'][2:] for i in response['dailystk']])
                 for key, value in fields.items():
-                    self.tickers[key].append(data[:, ].tolist())
+                    self.tickers[key].append(data[:, value].tolist())
                 break
 
     def order(self, position):
         response = self.contest_client.submit_answer(contest_pb2.AnswerRequest(user_id=9,
                                                                   user_pin=passwd,
-                                                                  session_key=session_key,
+                                                                  session_key=self.session_key,
                                                                   sequence=70,
                                                                   positions=position))
         print(response)
@@ -51,8 +53,8 @@ class DataHandler:
 
 if __name__ == '__main__':
     handler = DataHandler()
-    while True:
-        handler.get()
+    handler.login()
+    handler.get()
 
 
 
