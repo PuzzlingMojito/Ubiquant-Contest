@@ -20,14 +20,15 @@ class DataHandler:
         self.sequence = [-1]
         self.capital = []
         self.position = []
-        self.session_key = None
         self.tickers = {field: [] for field in fields.keys()}
-
-    def login(self):
         conn = grpc.insecure_channel(contest)
-        client = contest_pb2_grpc.ContestStub(channel=self.conn)
+        client = contest_pb2_grpc.ContestStub(channel=conn)
         response = client.login(contest_pb2.LoginRequest(user_id=9, user_pin=passwd))
         self.session_key = response.session_key
+        if response.success:
+            logging.info('login success')
+        else:
+            logging.info('login failed, ' + response.reason)
 
     def get_next(self):
         # TODO: has_next_question
@@ -46,7 +47,7 @@ class DataHandler:
                 data = np.array([i['values'][2:] for i in response['dailystk']])
                 for key, value in fields.items():
                     self.tickers[key].append(data[:, value].tolist())
-                logging.info(self.sequence[-1])
+                logging.info('get_next ' + str(self.sequence[-1]))
                 break
 
     def order(self, position):
@@ -55,34 +56,23 @@ class DataHandler:
         response = client.submit_answer(contest_pb2.AnswerRequest(user_id=9,
                                                                   user_pin=passwd,
                                                                   session_key=self.session_key,
-                                                                  sequence=70,
+                                                                  sequence=self.sequence[-1],
                                                                   positions=position))
-        print(response)
+        if response.accepted:
+            logging.info('order accepted')
+        else:
+            logging.info('order failed, ' + response.reason)
 
     def get_price(self, field, window=10):
         return np.array(self.tickers[field][-window:])
 
-    def calibrate(self, calibrate_window):
-        while len(self.sequence) < calibrate_window:
-            self.get_next()
-
-    # def save(self):
-    #     f = open(os.getcwd() + filename, 'wb')
-    #     pickle.dump(self, f)
-
-
-# def create_handler(calibrate_window):
-#     if os.path.exists(os.getcwd() + filename):
-#         f = open(os.getcwd() + filename, 'rb')
-#         handler = pickle.load(f)
-#     else:
-#         handler = DataHandler(calibrate_window)
-#     handler.calibrate()
-#     return handler
+    def get_volume(self, window=10):
+        return self.get_price('volume', window)
 
 
 if __name__ == '__main__':
-    print(os.getcwd())
+    handler = DataHandler()
+    handler.get_next()
 
 
 

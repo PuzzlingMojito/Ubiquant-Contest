@@ -1,5 +1,4 @@
 import numpy as np
-import os
 from scipy.stats import linregress
 from data_handler import DataHandler
 from strategy import Strategy
@@ -26,25 +25,27 @@ class RsRs(Strategy):
         self.betas.append(beta)
         self.r_2.append(r_2)
 
-    def get_beta_r2(self, window):
-        return np.array(self.betas[-window:]), np.array(self.r_2[-window:])
-
-    def get_rs(self, window):
-        betas, r_2 = self.get_beta_r2(window)
-        z_score = (betas[-1] - beta.mean()) / betas.std()
+    def calculate_rs(self, window):
+        betas, r_2 = np.array(self.betas[-window:]), np.array(self.r_2[-1])
+        z_score = (betas[-1] - betas.mean(axis=0)) / betas.std(axis=0)
         self.rs.append(z_score * r_2)
 
-    def run(self):
+    def run(self, window_1, window_2):
+        for i in range(window_1):
+            self.handler.get_next()
+        for i in range(window_2):
+            self.handler.get_next()
+            self.calculate_beta_r2(10)
         for i in range(100):
             self.handler.get_next()
             self.calculate_beta_r2(10)
             if i % 10 == 0:
-                self.get_rs(10)
+                self.calculate_rs(10)
+                self.handler.order(self.create_position(self.rs[-1]))
 
 
 if __name__ == '__main__':
     handler = DataHandler()
-    handler.calibrate(30)
     strategy = RsRs(handler)
-    strategy.run()
+    strategy.run(10, 10)
 
