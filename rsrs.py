@@ -18,7 +18,7 @@ class RsRs(Strategy):
         low = self.handler.get_price('low', window)
         beta = []
         r_2 = []
-        for i in range(500):
+        for i in range(high.shape[1]):
             slope, intercept, r_value, p_value, std_err = linregress(low[:, i], high[:, i])
             beta.append(slope)
             r_2.append(r_value**2)
