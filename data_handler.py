@@ -20,6 +20,7 @@ class DataHandler:
         self.sequence = [-1]
         self.capital = []
         self.position = []
+        self.cash = 5e8
         self.tickers = {field: [] for field in fields.keys()}
         conn = grpc.insecure_channel(contest)
         client = contest_pb2_grpc.ContestStub(channel=conn)
