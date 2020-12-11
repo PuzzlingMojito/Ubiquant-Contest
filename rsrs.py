@@ -39,9 +39,8 @@ class RsRs(Strategy):
         for i in range(100):
             self.handler.get_next()
             self.calculate_beta_r2(10)
-            if i % 10 == 0:
-                self.calculate_rs(10)
-                self.handler.order(self.create_position(self.rs[-1]))
+            self.calculate_rs(10)
+            self.handler.order(self.create_position(self.rs[-1]))
 
 
 if __name__ == '__main__':

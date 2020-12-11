@@ -18,14 +18,16 @@ filename = '/handler.pkl'
 class DataHandler:
     def __init__(self):
         self.sequence = [-1]
-        self.capital = []
         self.position = []
-        self.cash = 5e8
+        self.capital = []
+        self.total_asset = []
         self.tickers = {field: [] for field in fields.keys()}
         conn = grpc.insecure_channel(contest)
         client = contest_pb2_grpc.ContestStub(channel=conn)
         response = client.login(contest_pb2.LoginRequest(user_id=9, user_pin=passwd))
         self.session_key = response.session_key
+        self.capital.append(response.init_capital)
+        self.total_asset.append(response.init_capital)
         if response.success:
             logging.info('login success')
         else:
@@ -41,15 +43,23 @@ class DataHandler:
             if response.sequence == -1:
                 time.sleep(0.1)
             else:
-                self.sequence.append(response.sequence)
-                self.capital.append(response.capital)
-                response = MessageToDict(response, including_default_value_fields=True)
-                self.position.append(response['positions'])
-                data = np.array([i['values'][2:] for i in response['dailystk']])
-                for key, value in fields.items():
-                    self.tickers[key].append(data[:, value].tolist())
-                logging.info('get_next ' + str(self.sequence[-1]))
+                self.update(response)
+                logging.info('sequence:%d, total_asset_pct:%.2f%%', self.sequence[-1],
+                             (self.total_asset[-1] - self.total_asset[0]) / self.total_asset[0])
                 break
+
+    def update(self, response):
+        self.sequence.append(response.sequence)
+        self.capital.append(response.capital)
+        response = MessageToDict(response, including_default_value_fields=True)
+        data = np.array([i['values'][2:] for i in response['dailystk']])
+        for key, value in fields.items():
+            self.tickers[key].append(data[:, value].tolist())
+        if not response['positions']:
+            self.position.append(np.zeros(data.shape[0]))
+        else:
+            self.position.append(np.array(response['positions']))
+        self.total_asset.append(self.get_total_asset())
 
     def order(self, position):
         conn = grpc.insecure_channel(contest)
@@ -69,6 +79,11 @@ class DataHandler:
 
     def get_volume(self, window=10):
         return self.get_price('volume', window)
+
+    def get_total_asset(self):
+        stock_value = sum(np.array(self.position[-1]) * self.tickers['close'][-1])
+        cash_value = self.capital[-1]
+        return stock_value + cash_value
 
 
 if __name__ == '__main__':
