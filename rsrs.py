@@ -46,8 +46,8 @@ class RsRs:
 
         # max_single_stock_value = min(close[select_stocks] * max_trading_volume[select_stocks])
         position = np.zeros(len(factor_values))
-        amount_long = max_trading_volume[long] * close[long]
-        amount_short = max_trading_volume[short] * close[short]
+        amount_long = sum(max_trading_volume[long] * close[long])
+        amount_short = sum(max_trading_volume[short] * close[short])
         if amount_long > amount_short:
             position[long] = max_trading_volume[long] / (amount_long / amount_short)
             position[short] = max_trading_volume[short]
