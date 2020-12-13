@@ -44,14 +44,14 @@ class RsRs:
         position[short] = max_trading_volume[short]
         amount = close * position
         while True:
-            if isclose(np.max(amount), 0.1 * np.sum(amount)):
-                print('single: ', np.max(amount) - 0.1 * np.sum(amount))
+            if not isclose(np.max(amount), 0.1 * np.sum(amount)):
+                # print('single: ', np.max(amount) - 0.1 * np.sum(amount))
                 amount[amount >= 0.1 * np.sum(amount)] = 0.1 * np.sum(amount)
                 position = amount / close
             amount_long = np.sum(amount[long])
             amount_short = np.sum(amount[short])
-            if not isclose(np.sum(amount[long]), np.sum(amount[short])):
-                print('exposure: ', abs(np.sum(amount[long])) - np.sum(amount[short]) / np.sum(amount))
+            if not isclose(amount_long, amount_short):
+                # print('exposure: ', abs(amount_long - amount_short) / (amount_long + amount_short))
                 if amount_long > amount_short:
                     position[long] *= (amount_short / amount_long)
                 else:
