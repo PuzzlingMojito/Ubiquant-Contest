@@ -6,6 +6,7 @@ import logging
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+
 class RsRs:
     def __init__(self, data_handler):
         self.handler = data_handler
@@ -44,20 +45,21 @@ class RsRs:
         position[short] = max_trading_volume[short]
         amount = close * position
         while True:
-            if not isclose(np.max(amount), 0.1 * np.sum(amount)):
-                # print('single: ', np.max(amount) - 0.1 * np.sum(amount))
-                amount[amount >= 0.1 * np.sum(amount)] = 0.1 * np.sum(amount)
+            if np.max(amount) > 0.1 * np.sum(amount) and not isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1):
+                logging.info('single:{}'.format(np.max(amount) - 0.1 * np.sum(amount)))
+                amount[amount > 0.1 * np.sum(amount)] = 0.1 * np.sum(amount)
                 position = amount / close
             amount_long = np.sum(amount[long])
             amount_short = np.sum(amount[short])
-            if not isclose(amount_long, amount_short):
-                # print('exposure: ', abs(amount_long - amount_short) / (amount_long + amount_short))
+            if not isclose(amount_long, amount_short, abs_tol=1):
+                logging.info('exposure:{}'.format(abs(amount_long - amount_short) / (amount_long + amount_short)))
                 if amount_long > amount_short:
                     position[long] *= (amount_short / amount_long)
                 else:
                     position[short] *= (amount_long / amount_short)
-            amount = close * position
-            if isclose(np.max(amount), 0.1 * np.sum(amount)) and isclose(np.sum(amount[long]), np.sum(amount[short])):
+                amount = close * position
+            if (np.max(amount) < 0.1 * np.sum(amount) or isclose(np.max(amount), 0.1 * np.sum(amount))) and \
+                    isclose(np.sum(amount[long]), np.sum(amount[short])):
                 break
         position[short] *= -1
         return position
