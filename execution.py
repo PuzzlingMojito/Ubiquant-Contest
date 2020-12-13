@@ -21,11 +21,6 @@ class OrderQue:
         else:
             self.queue_dict[sequence] = [order]
 
-    def del_expire_order(self, sequence):
-        for order in self.queue:
-            if order.before_sequence >
-
-
 
 class Executor:
     def __init__(self):

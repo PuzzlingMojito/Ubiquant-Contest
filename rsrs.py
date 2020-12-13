@@ -1,12 +1,12 @@
 import numpy as np
 from scipy.stats import linregress
 from data_handler import DataHandler
-from strategy import Strategy
+import logging
 
 
-class RsRs(Strategy):
+class RsRs:
     def __init__(self, data_handler):
-        Strategy.__init__(self, data_handler)
+        self.handler = data_handler
         self.betas = []
         self.r_2 = []
         self.z_scores = []
@@ -29,6 +29,32 @@ class RsRs(Strategy):
         betas, r_2 = np.array(self.betas[-window:]), np.array(self.r_2[-1])
         z_score = (betas[-1] - betas.mean(axis=0)) / betas.std(axis=0)
         self.rs.append(z_score * r_2)
+
+    def create_position(self, factor_values):
+        rank_stocks = np.array(sorted(range(len(factor_values)), key=factor_values.__getitem__))
+        max_trading_volume = self.handler.get_volume(1)[0] * 0.05
+        # logging.info('max_volume:{}, min_volume:{}'.format(max(max_trading_volume),
+        #                                                    min(max_trading_volume[max_trading_volume > 0])))
+        # volume_limit = np.sort(max_trading_volume)[int(len(max_trading_volume) / 10)]
+        rank_stocks = rank_stocks[max_trading_volume[rank_stocks] > 0]
+        long = rank_stocks[:int(len(rank_stocks) / 10)]
+        short = rank_stocks[-int(len(rank_stocks) / 10):]
+        select_stocks = np.append(long, short)
+        # logging.info('10%:{}, 25%:{}, 50%:{}, 75%{}'.format(np.percentile(vol, 10), np.percentile(vol, 25),
+        #                                                     np.percentile(vol, 50), np.percentile(vol, 75)))
+        close = self.handler.get_price('close', 1)[0]
+
+        # max_single_stock_value = min(close[select_stocks] * max_trading_volume[select_stocks])
+        position = np.zeros(len(factor_values))
+        amount_long = max_trading_volume[long] * close[long]
+        amount_short = max_trading_volume[short] * close[short]
+        if amount_long > amount_short:
+            position[long] = max_trading_volume[long] / (amount_long / amount_short)
+            position[short] = max_trading_volume[short]
+        else:
+            position[short] = max_trading_volume[short] / (amount_short / amount_long)
+            position[long] = max_trading_volume[long]
+        return position
 
     def run(self, window_1, window_2):
         for i in range(window_1):
