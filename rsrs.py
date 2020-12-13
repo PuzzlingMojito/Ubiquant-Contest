@@ -1,8 +1,10 @@
 import numpy as np
 from scipy.stats import linregress
 from data_handler import DataHandler
+from math import isclose
 import logging
-
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 class RsRs:
     def __init__(self, data_handler):
@@ -33,27 +35,31 @@ class RsRs:
     def create_position(self, factor_values):
         rank_stocks = np.array(sorted(range(len(factor_values)), key=factor_values.__getitem__))
         max_trading_volume = self.handler.get_volume(1)[0] * 0.05
-        # logging.info('max_volume:{}, min_volume:{}'.format(max(max_trading_volume),
-        #                                                    min(max_trading_volume[max_trading_volume > 0])))
-        # volume_limit = np.sort(max_trading_volume)[int(len(max_trading_volume) / 10)]
         rank_stocks = rank_stocks[max_trading_volume[rank_stocks] > 0]
         long = rank_stocks[:int(len(rank_stocks) / 10)]
         short = rank_stocks[-int(len(rank_stocks) / 10):]
-        select_stocks = np.append(long, short)
-        # logging.info('10%:{}, 25%:{}, 50%:{}, 75%{}'.format(np.percentile(vol, 10), np.percentile(vol, 25),
-        #                                                     np.percentile(vol, 50), np.percentile(vol, 75)))
         close = self.handler.get_price('close', 1)[0]
-
-        # max_single_stock_value = min(close[select_stocks] * max_trading_volume[select_stocks])
-        position = np.zeros(len(factor_values))
-        amount_long = sum(max_trading_volume[long] * close[long])
-        amount_short = sum(max_trading_volume[short] * close[short])
-        if amount_long > amount_short:
-            position[long] = max_trading_volume[long] / (amount_long / amount_short)
-            position[short] = max_trading_volume[short]
-        else:
-            position[short] = max_trading_volume[short] / (amount_short / amount_long)
-            position[long] = max_trading_volume[long]
+        position = np.zeros(close.shape[0])
+        position[long] = max_trading_volume[long]
+        position[short] = max_trading_volume[short]
+        amount = close * position
+        while True:
+            if isclose(np.max(amount), 0.1 * np.sum(amount)):
+                print('single: ', np.max(amount) - 0.1 * np.sum(amount))
+                amount[amount >= 0.1 * np.sum(amount)] = 0.1 * np.sum(amount)
+                position = amount / close
+            amount_long = np.sum(amount[long])
+            amount_short = np.sum(amount[short])
+            if not isclose(np.sum(amount[long]), np.sum(amount[short])):
+                print('exposure: ', abs(np.sum(amount[long])) - np.sum(amount[short]) / np.sum(amount))
+                if amount_long > amount_short:
+                    position[long] *= (amount_short / amount_long)
+                else:
+                    position[short] *= (amount_long / amount_short)
+            amount = close * position
+            if isclose(np.max(amount), 0.1 * np.sum(amount)) and isclose(np.sum(amount[long]), np.sum(amount[short])):
+                break
+        position[short] *= -1
         return position
 
     def run(self, window_1, window_2):
