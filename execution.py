@@ -40,6 +40,12 @@ class Position:
         op = np.vectorize(close_position)
         self.position[stocks] = op(self.position[stocks], max_trading_volume)
 
+    def check(self, stocks_dict, price, amount):
+        return np.all(self.position[stocks_dict['long']] > 0) and \
+               np.all(self.position[stocks_dict['short']] < 0) and \
+               np.all(self.position[stocks_dict['close']] == 0) and \
+               np.abs(self.position) * price >= amount
+
     def adjust(self, price):
         long_stocks = np.where(self.position > 0)
         short_stocks = np.where(self.position < 0)
@@ -69,17 +75,21 @@ class Position:
 class Executor:
     def __init__(self, data_handler):
         self.handler = data_handler
+        self.max_ratio = 0.5
+        self.order_list = []
 
-    def execute(self, factor_values):
-        len_stocks = len(factor_values)
-        rank_stocks = np.array(sorted(range(len_stocks), key=factor_values.__getitem__))
-        max_trading_volume = self.handler.get_volume(1)[0] * 0.05
-        long_stocks = rank_stocks[:int(len(rank_stocks) / 10)]
-        short_stocks = rank_stocks[-int(len(rank_stocks) / 10):]
-        close_stocks = rank_stocks[int(len(rank_stocks) / 10): -int(len(rank_stocks) / 10)]
+    def add_order(self, stocks_dict):
+        self.order_list.append(stocks_dict)
+
+    def trade(self):
+        capital = self.handler.get_asset_info('capital', 1)[0]
+        price = self.handler.get_price('close', 1)[0]
         position = Position(self.handler.position[-1])
-        position.long(long_stocks, max_trading_volume[long_stocks])
-        position.short(short_stocks, max_trading_volume[short_stocks])
-        position.close(close_stocks, max_trading_volume[close_stocks])
-        position.adjust(self.handler.get_price('close', 1)[0])
-        self.handler.order(position.position)
+        if len(self.order_list) > 0 and \
+                not position.check(stocks_dict=self.order_list[-1], price=price, amount=self.max_ratio * capital):
+            max_trading_volume = self.handler.get_volume(1)[0] * 0.05
+            position.long(self.order_list[-1]['long'], max_trading_volume[self.order_list[-1]['long']])
+            position.short(self.order_list[-1]['short'], max_trading_volume[self.order_list[-1]['short']])
+            position.close(self.order_list[-1]['close'], max_trading_volume[self.order_list[-1]['close']])
+            position.adjust(price=price)
+            self.handler.order(position.position)

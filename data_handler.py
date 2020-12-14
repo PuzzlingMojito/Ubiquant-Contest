@@ -17,7 +17,7 @@ question = '47.103.23.116:56701'
 contest = '47.103.23.116:56702'
 passwd = 'eROzSpSO'
 ticker_fields = {'open': 0, 'high': 1, 'low': 2, 'close': 3, 'volume': 4}
-asset_fields = ['capital_ratio', 'long_ratio', 'short_ratio', 'exposure', 'ret']
+asset_fields = ['capital', 'capital_ratio', 'long_ratio', 'short_ratio', 'exposure']
 
 
 class DataHandler:
@@ -68,6 +68,7 @@ class DataHandler:
             self.position.append(np.zeros(data.shape[0]))
         else:
             self.position.append(np.array(response['positions']))
+        info['capital'] = response['capital']
         info['capital_ratio'] = response['capital'] / self.init_capital
         stock_value = np.array(self.position[-1]) * self.tickers['close'][-1]
         long_value, short_abs_value = np.sum(stock_value[stock_value > 0]), abs(np.sum(stock_value[stock_value < 0]))
@@ -79,7 +80,6 @@ class DataHandler:
             info['exposure'] = 0
         else:
             info['exposure'] = diff_occupy / total_occupy
-        info['ret'] = 0
         for field in asset_fields:
             self.asset_info[field].append(info[field])
         logging.info("sequence:{}, capital_ratio:{:%}, long_ratio:{:%}, short_ratio:{:%}, exposure:{:%}"
@@ -105,8 +105,8 @@ class DataHandler:
     def get_volume(self, window=10):
         return self.get_price('volume', window)
 
-    def get_position(self):
-        return Position(self.position[-1])
+    def get_asset_info(self, field, window=10):
+        return self.asset_info[field][-window:]
 
 
 if __name__ == '__main__':

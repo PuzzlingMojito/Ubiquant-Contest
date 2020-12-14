@@ -35,36 +35,14 @@ class RsRs:
         z_score = (betas[-1] - betas.mean(axis=0)) / betas.std(axis=0)
         self.rs.append(z_score * r_2 * betas[-1])
 
-    def create_position(self, factor_values):
-        rank_stocks = np.array(sorted(range(len(factor_values)), key=factor_values.__getitem__))
+    def get_stock_dict(self):
+        rank = np.argsort(-self.rs[-1])
         max_trading_volume = self.handler.get_volume(1)[0] * 0.05
-        rank_stocks = rank_stocks[max_trading_volume[rank_stocks] > 0]
-        long = rank_stocks[:int(len(rank_stocks) / 10)]
-        short = rank_stocks[-int(len(rank_stocks) / 10):]
-        close = self.handler.get_price('close', 1)[0]
-        position = np.zeros(close.shape[0])
-        position[long] = max_trading_volume[long]
-        position[short] = max_trading_volume[short]
-        amount = close * position
-        while True:
-            if np.max(amount) > 0.1 * np.sum(amount) and not isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1):
-                logging.info('single:{}'.format(np.max(amount) - 0.1 * np.sum(amount)))
-                amount[amount > 0.1 * np.sum(amount)] = 0.1 * np.sum(amount)
-                position = amount / close
-            amount_long = np.sum(amount[long])
-            amount_short = np.sum(amount[short])
-            if not isclose(amount_long, amount_short, abs_tol=1):
-                logging.info('exposure:{}'.format(abs(amount_long - amount_short) / (amount_long + amount_short)))
-                if amount_long > amount_short:
-                    position[long] *= (amount_short / amount_long)
-                else:
-                    position[short] *= (amount_long / amount_short)
-                amount = close * position
-            if (np.max(amount) < 0.1 * np.sum(amount) or isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1)) \
-                    and isclose(np.sum(amount[long]), np.sum(amount[short]), abs_tol=1):
-                break
-        position[short] *= -1
-        return position
+        rank = rank[max_trading_volume[rank] > np.percentile(max_trading_volume, 20)]
+        stock_dict = {'long': rank[:int(len(rank) / 10)],
+                      'close': rank[int(len(rank) / 10): -int(len(rank) / 10)],
+                      'short': rank[-int(len(rank) / 10):]}
+        return stock_dict
 
     def run(self, window_1, window_2):
         for i in range(window_1):
@@ -76,7 +54,9 @@ class RsRs:
             self.handler.get_next()
             self.calculate_beta_r2(window_1)
             self.calculate_rs(window_2)
-            self.executor.execute(self.rs[-1])
+            if i % 10 == 0:
+                self.executor.add_order(self.get_stock_dict())
+            self.executor.trade()
 
 
 if __name__ == '__main__':
