@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import linregress
 from data_handler import DataHandler
+from execution import Executor
 from math import isclose
 import logging
 import warnings
@@ -8,8 +9,9 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
 class RsRs:
-    def __init__(self, data_handler):
+    def __init__(self, data_handler, ext):
         self.handler = data_handler
+        self.executor = executor
         self.betas = []
         self.r_2 = []
         self.z_scores = []
@@ -31,7 +33,7 @@ class RsRs:
     def calculate_rs(self, window):
         betas, r_2 = np.array(self.betas[-window:]), np.array(self.r_2[-1])
         z_score = (betas[-1] - betas.mean(axis=0)) / betas.std(axis=0)
-        self.rs.append(z_score * r_2)
+        self.rs.append(z_score * r_2 * betas[-1])
 
     def create_position(self, factor_values):
         rank_stocks = np.array(sorted(range(len(factor_values)), key=factor_values.__getitem__))
@@ -58,8 +60,8 @@ class RsRs:
                 else:
                     position[short] *= (amount_long / amount_short)
                 amount = close * position
-            if (np.max(amount) < 0.1 * np.sum(amount) or isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1)) and \
-                    isclose(np.sum(amount[long]), np.sum(amount[short]), abs_tol=1):
+            if (np.max(amount) < 0.1 * np.sum(amount) or isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1)) \
+                    and isclose(np.sum(amount[long]), np.sum(amount[short]), abs_tol=1):
                 break
         position[short] *= -1
         return position
@@ -69,16 +71,17 @@ class RsRs:
             self.handler.get_next()
         for i in range(window_2):
             self.handler.get_next()
-            self.calculate_beta_r2(10)
+            self.calculate_beta_r2(window_1)
         for i in range(400):
             self.handler.get_next()
-            self.calculate_beta_r2(10)
-            self.calculate_rs(10)
-            self.handler.order(self.create_position(self.rs[-1]))
+            self.calculate_beta_r2(window_1)
+            self.calculate_rs(window_2)
+            self.executor.execute(self.rs[-1])
 
 
 if __name__ == '__main__':
     handler = DataHandler()
-    strategy = RsRs(handler)
-    strategy.run(10, 10)
+    executor = Executor(handler)
+    strategy = RsRs(handler, executor)
+    strategy.run(2, 2)
 

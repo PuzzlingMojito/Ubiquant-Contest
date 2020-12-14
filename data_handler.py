@@ -7,14 +7,17 @@ import numpy as np
 from math import isclose
 from rpc_package import contest_pb2, question_pb2_grpc, contest_pb2_grpc, question_pb2
 from google.protobuf.json_format import MessageToDict
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s.%(msecs)03d-%(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
 
 question = '47.103.23.116:56701'
 contest = '47.103.23.116:56702'
 passwd = 'eROzSpSO'
 ticker_fields = {'open': 0, 'high': 1, 'low': 2, 'close': 3, 'volume': 4}
 asset_fields = ['capital_ratio', 'long_ratio', 'short_ratio', 'exposure', 'ret']
-filename = '/handler.pkl'
 
 
 class DataHandler:
@@ -101,6 +104,9 @@ class DataHandler:
 
     def get_volume(self, window=10):
         return self.get_price('volume', window)
+
+    def get_position(self):
+        return Position(self.position[-1])
 
 
 if __name__ == '__main__':
