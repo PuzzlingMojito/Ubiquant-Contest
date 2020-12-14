@@ -58,8 +58,8 @@ class RsRs:
                 else:
                     position[short] *= (amount_long / amount_short)
                 amount = close * position
-            if (np.max(amount) < 0.1 * np.sum(amount) or isclose(np.max(amount), 0.1 * np.sum(amount))) and \
-                    isclose(np.sum(amount[long]), np.sum(amount[short])):
+            if (np.max(amount) < 0.1 * np.sum(amount) or isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1)) and \
+                    isclose(np.sum(amount[long]), np.sum(amount[short]), abs_tol=1):
                 break
         position[short] *= -1
         return position
@@ -70,7 +70,7 @@ class RsRs:
         for i in range(window_2):
             self.handler.get_next()
             self.calculate_beta_r2(10)
-        for i in range(100):
+        for i in range(400):
             self.handler.get_next()
             self.calculate_beta_r2(10)
             self.calculate_rs(10)
