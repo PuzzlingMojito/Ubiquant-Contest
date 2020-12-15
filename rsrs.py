@@ -37,8 +37,8 @@ class RsRs:
 
     def get_stock_dict(self):
         rank = np.argsort(-self.rs[-1])
-        max_trading_volume = self.handler.get_volume(1)[0] * 0.05
-        rank = rank[max_trading_volume[rank] > np.percentile(max_trading_volume, 20)]
+        # max_trading_volume = self.handler.get_volume(1)[0] * 0.05
+        # rank = rank[max_trading_volume[rank] > np.percentile(max_trading_volume, 20)]
         stock_dict = {'long': rank[:int(len(rank) / 10)],
                       'close': rank[int(len(rank) / 10): -int(len(rank) / 10)],
                       'short': rank[-int(len(rank) / 10):]}
@@ -54,7 +54,7 @@ class RsRs:
             self.handler.get_next()
             self.calculate_beta_r2(window_1)
             self.calculate_rs(window_2)
-            if i % 10 == 0:
+            if i % 100 == 10:
                 self.executor.add_order(self.get_stock_dict())
             self.executor.trade()
 
@@ -63,5 +63,5 @@ if __name__ == '__main__':
     handler = DataHandler()
     executor = Executor(handler)
     strategy = RsRs(handler, executor)
-    strategy.run(2, 2)
+    strategy.run(5, 5)
 

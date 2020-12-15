@@ -85,11 +85,13 @@ class Executor:
         capital = self.handler.get_asset_info('capital', 1)[0]
         price = self.handler.get_price('close', 1)[0]
         position = Position(self.handler.position[-1])
-        if len(self.order_list) > 0 and \
-                not position.check(stocks_dict=self.order_list[-1], price=price, amount=self.max_ratio * capital):
-            max_trading_volume = self.handler.get_volume(1)[0] * 0.05
-            position.long(self.order_list[-1]['long'], max_trading_volume[self.order_list[-1]['long']])
-            position.short(self.order_list[-1]['short'], max_trading_volume[self.order_list[-1]['short']])
-            position.close(self.order_list[-1]['close'], max_trading_volume[self.order_list[-1]['close']])
-            position.adjust(price=price)
-            self.handler.order(position.position)
+        if len(self.order_list) > 0:
+            if position.check(stocks_dict=self.order_list[-1], price=price, amount=self.max_ratio * capital):
+                self.order_list.pop(-1)
+            else:
+                max_trading_volume = self.handler.get_volume(1)[0]
+                position.long(self.order_list[-1]['long'], max_trading_volume[self.order_list[-1]['long']])
+                position.short(self.order_list[-1]['short'], max_trading_volume[self.order_list[-1]['short']])
+                position.close(self.order_list[-1]['close'], max_trading_volume[self.order_list[-1]['close']])
+                position.adjust(price=price)
+                self.handler.order(position.position)
