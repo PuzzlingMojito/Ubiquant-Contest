@@ -86,7 +86,7 @@ class DataHandler:
 
     def get(self, field, window=1):
         # if window == 1 then please use handler.get()[0] to get the element
-        # or you will get a list which contains that element
+        # or you will get a list which contains that element.
         if field in ticker_fields:
             return np.array(self.data[field][-window:])
         else:
