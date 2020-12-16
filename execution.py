@@ -30,11 +30,16 @@ class Executor:
         self.target_position = None
 
     def add(self, stocks_dict):
-        self.target_position = self.position
+        self.target_position = np.copy(self.position)
         self.long(stocks_dict['long'], self.volume[stocks_dict['long']])
         self.short(stocks_dict['short'], self.volume[stocks_dict['short']])
         self.close(stocks_dict['close'], self.volume[stocks_dict['short']])
         self.adjust()
+        self.direction_change()
+
+    def direction_change(self):
+        direction_change = np.sign(self.position) == np.sign(self.position)
+        logging.info('change list:{}'.format(np.argwhere(~direction_change).reshape(-1).tolist()))
 
     def long(self, stocks, position):
         # position is unsigned

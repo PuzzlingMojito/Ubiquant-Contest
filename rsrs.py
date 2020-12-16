@@ -57,6 +57,7 @@ class RsRs:
         long = np.argwhere(self.rs[-1] > 0.7).reshape(-1).tolist()
         short = np.argwhere(self.rs[-1] < -0.7).reshape(-1).tolist()
         close = []
+        logging.info('len_l:{:d}, len_s:{:d}'.format(len(long), len(short)))
         stock_dict = {'long': long,
                       'close': close,
                       'short': short}
