@@ -1,4 +1,3 @@
-from data_handler import DataHandler
 import numpy as np
 from math import isclose
 import logging
@@ -21,41 +20,56 @@ def close_position(old, max_trading_volume):
         return 0
 
 
-class Position:
-    def __init__(self, array):
-        self.position = array
+class Executor:
+    def __init__(self, max_pct=0.5):
+        self.price = None
+        self.volume = None
+        self.capital = None
+        self.position = None
+        self.max_pct = max_pct
+        self.target_position = None
+
+    def add(self, stocks_dict):
+        self.target_position = self.position
+        self.long(stocks_dict['long'], self.volume[stocks_dict['long']])
+        self.short(stocks_dict['short'], self.volume[stocks_dict['short']])
+        self.close(stocks_dict['close'], self.volume[stocks_dict['short']])
+        self.adjust()
 
     def long(self, stocks, position):
         # position is unsigned
+        if not stocks:
+            return
         op = np.vectorize(change_position)
-        self.position[stocks] = op(self.position[stocks], position)
+        self.target_position[stocks] = op(self.position[stocks], position)
 
     def short(self, stocks, position):
         # position is unsigned
+        if not stocks:
+            return
         op = np.vectorize(change_position)
-        self.position[stocks] = op(self.position[stocks], -position)
+        self.target_position[stocks] = op(self.position[stocks], -position)
 
     def close(self, stocks, max_trading_volume):
         # position is unsigned
+        if not stocks:
+            return
         op = np.vectorize(close_position)
-        self.position[stocks] = op(self.position[stocks], max_trading_volume)
+        self.target_position[stocks] = op(self.position[stocks], max_trading_volume)
 
-    def check(self, stocks_dict, price, amount):
-        return np.all(self.position[stocks_dict['long']] > 0) and \
-               np.all(self.position[stocks_dict['short']] < 0) and \
-               np.all(self.position[stocks_dict['close']] == 0) and \
-               np.abs(self.position) * price >= amount
+    def check(self):
+        return np.all(np.isclose(self.position, self.target_position, rtol=0.1))
 
-    def adjust(self, price):
-        long_stocks = np.where(self.position > 0)
-        short_stocks = np.where(self.position < 0)
-        position = abs(self.position)
-        amount = position * price
+    def adjust(self):
+        long_stocks = np.where(self.target_position > 0)
+        short_stocks = np.where(self.target_position < 0)
+        position = abs(self.target_position)
+        amount = position * self.price
         while True:
             if np.max(amount) > 0.1 * np.sum(amount) and not isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1):
                 # logging.info('single:{}'.format(np.max(amount) - 0.1 * np.sum(amount)))
                 amount[amount > 0.1 * np.sum(amount)] = 0.1 * np.sum(amount)
-                position = amount / price
+                position = amount / self.price
             amount_long = np.sum(amount[long_stocks])
             amount_short = np.sum(amount[short_stocks])
             if not isclose(amount_long, amount_short, abs_tol=1):
@@ -64,34 +78,18 @@ class Position:
                     position[long_stocks] *= (amount_short / amount_long)
                 else:
                     position[short_stocks] *= (amount_long / amount_short)
-                amount = position * price
+                amount = position * self.price
             if (np.max(amount) < 0.1 * np.sum(amount) or isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1)) and \
                     isclose(np.sum(amount[long_stocks]), np.sum(amount[short_stocks]), abs_tol=1):
                 break
-        self.position[long_stocks] = position[long_stocks]
-        self.position[short_stocks] = -position[short_stocks]
+        self.target_position[long_stocks] = position[long_stocks]
+        self.target_position[short_stocks] = -position[short_stocks]
+        estimate_amount = np.sum(np.abs(self.target_position) * self.price)
+        if estimate_amount > self.capital:
+            self.target_position *= (self.capital / estimate_amount)
 
-
-class Executor:
-    def __init__(self, data_handler):
-        self.handler = data_handler
-        self.max_ratio = 0.5
-        self.order_list = []
-
-    def add_order(self, stocks_dict):
-        self.order_list.append(stocks_dict)
-
-    def trade(self):
-        capital = self.handler.get_asset_info('capital', 1)[0]
-        price = self.handler.get_price('close', 1)[0]
-        position = Position(self.handler.position[-1])
-        if len(self.order_list) > 0:
-            if position.check(stocks_dict=self.order_list[-1], price=price, amount=self.max_ratio * capital):
-                self.order_list.pop(-1)
-            else:
-                max_trading_volume = self.handler.get_volume(1)[0]
-                position.long(self.order_list[-1]['long'], max_trading_volume[self.order_list[-1]['long']])
-                position.short(self.order_list[-1]['short'], max_trading_volume[self.order_list[-1]['short']])
-                position.close(self.order_list[-1]['close'], max_trading_volume[self.order_list[-1]['close']])
-                position.adjust(price=price)
-                self.handler.order(position.position)
+    def update(self, price, volume, capital, position):
+        self.price = price
+        self.volume = volume
+        self.capital = capital
+        self.position = position
