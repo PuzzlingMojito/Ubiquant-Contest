@@ -8,7 +8,7 @@ from math import isclose
 from rpc_package import contest_pb2, question_pb2_grpc, contest_pb2_grpc, question_pb2
 from google.protobuf.json_format import MessageToDict
 logging.basicConfig(
-    filename='trading_log.log',
+    filename='mom.log',
     filemode='w',
     level=logging.INFO,
     format='%(asctime)s.%(msecs)03d-%(message)s',
@@ -67,8 +67,8 @@ class DataHandler:
                 amount = self.get('close', 1)[0] * self.data['positions'][-1]
                 long = np.sum(amount[np.where(amount > 0)]) / response['capital']
                 short = -np.sum(amount[np.where(amount < 0)]) / response['capital']
-                logging.info('seq:{:d}, long:{:%}, short:{:%}, return:{:%}'
-                             .format(self.sequence[-1], long, short, response['capital'] / self.init_capital))
+                logging.info('seq:{:d}, long:{:.2%}, short:{:.2%}, return:{:.2%}'
+                             .format(self.sequence[-1], long, short, (response['capital'] / self.init_capital) - 1))
                 break
 
     def order(self, position):
@@ -80,9 +80,9 @@ class DataHandler:
                                                                   sequence=self.sequence[-1],
                                                                   positions=position))
         if response.accepted:
-            logging.info('order accepted')
+            logging.info('seq:{:d}, order accepted'.format(self.sequence[-1]))
         else:
-            logging.info('order failed, ' + response.reason)
+            logging.info('seq:{:d}, order failed, {}'.format(self.sequence[-1], response.reason))
 
     def get(self, field, window=1):
         # if window == 1 then please use handler.get()[0] to get the element

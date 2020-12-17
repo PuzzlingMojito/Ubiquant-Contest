@@ -37,25 +37,15 @@ class RsRs:
             return
         betas, r_2 = np.array(self.betas[-window:]), np.array(self.r_2[-1])
         z_score = (betas[-1] - betas.mean(axis=0)) / betas.std(axis=0)
-        self.rs.append(z_score * r_2 * betas[-1])
-
-    # def calculate_ma(self, window=20):
-    #     price = self.handler.get('close', window + 3)
-    #     ma_0 = np.mean(price[-20:])
-    #     ma_3 = np.mean(price[-23:-3])
-    #     return ma_0 > ma_3, ma_0 < ma_3
+        rs = z_score * r_2 * betas[-1]
+        rs[np.logical_or(np.isinf(rs), np.isnan(rs))] = 0
+        self.rs.append(rs)
 
     def get_stocks_dict(self):
         if len(self.rs) == 0:
             return {'long': [], 'short': [], 'close': []}
-        # ma_long_signal, ma_short_signal = self.calculate_ma()
-        # rs_long_signal = self.rs[-1] > 0.7
-        # rs_short_signal = self.rs[-1] < -0.7
-        # close = np.argwhere(np.logical_or(rs_long_signal, rs_short_signal))
-        # long = np.argwhere(np.logical_and(ma_long_signal, rs_long_signal))
-        # short = np.argwhere(np.logical_and(ma_short_signal, rs_short_signal))
-        long = np.argwhere(self.rs[-1] > 0.7).reshape(-1).tolist()
-        short = np.argwhere(self.rs[-1] < -0.7).reshape(-1).tolist()
+        long = np.where(np.logical_and(self.rs[-1] > np.percentile(self.rs[-1], 90), self.rs[-1] > 0.7))[0].tolist()
+        short = np.where(np.logical_and(self.rs[-1] < np.percentile(self.rs[-1], 10), self.rs[-1] < -0.7))[0].tolist()
         close = []
         logging.info('len_l:{:d}, len_s:{:d}'.format(len(long), len(short)))
         stock_dict = {'long': long,
@@ -72,7 +62,9 @@ class RsRs:
                                  position=self.handler.get('positions')[0])
             self.calculate_beta_r2(window_1)
             self.calculate_rs(window_2)
-            self.executor.add(self.get_stocks_dict())
+            if len(self.rs) > 0:
+                self.executor.add_order(self.get_stocks_dict())
+            self.executor.calculate_target()
             if not self.executor.check():
                 self.handler.order(self.executor.target_position)
 
