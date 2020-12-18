@@ -29,33 +29,34 @@ class Momentum:
         today = np.sign(positions[-1])
         holding = np.sum(np.abs(np.sign(positions)), axis=0)
         valid_stocks = np.argwhere(np.logical_or(today == 0.0, holding >= window)).reshape(-1).tolist()
-        logging.info('len_valid_stocks:{}'.format(len(valid_stocks)))
         rank = list(np.argsort(self.mom[-1]))
-        short = intersection(rank[:int(len(rank) / 10)], valid_stocks)
-        long = intersection(rank[-int(len(rank) / 10):], valid_stocks)
-        close = intersection(rank[int(len(rank) / 10): -int(len(rank) / 10)], valid_stocks)
-        logging.info('len_l:{:d}, len_s:{:d}, len_c:{:d}'.format(len(long), len(short), len(close)))
+        short = intersection(rank[:int(len(rank) / 20)], valid_stocks)
+        long = intersection(rank[-int(len(rank) / 20):], valid_stocks)
+        close = intersection(rank[int(len(rank) / 20): -int(len(rank) / 20)], valid_stocks)
+        logging.info('      l:{:d}, s:{:d}, c:{:d}, v:{:d}'
+                     .format(len(long), len(short), len(close), len(valid_stocks)))
         return {'long': long, 'close': close, 'short': short}
 
-    def run(self):
+    def run(self, window):
         while True:
             self.handler.get_next()
             self.executor.update(price=self.handler.get('close')[0],
                                  volume=self.handler.get('volume')[0],
                                  capital=self.handler.get('capital')[0],
                                  position=self.handler.get('positions')[0])
-            self.calculate_mom(60)
+            if len(self.handler.sequence) > window:
+                self.calculate_mom(window)
             if len(self.mom) > 0:
                 stocks_dict = self.get_stocks_dict()
                 self.executor.add_order(stocks_dict)
-            self.executor.calculate_target()
-            if not self.executor.check():
-                self.handler.order(self.executor.target_position)
+                self.executor.calculate_target()
+                if not self.executor.check():
+                    self.handler.order(self.executor.target_position)
 
 
 if __name__ == '__main__':
     handler = DataHandler()
     executor = Executor()
     mom = Momentum(handler, executor)
-    mom.run()
+    mom.run(60)
 

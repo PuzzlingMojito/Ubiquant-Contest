@@ -19,8 +19,6 @@ class RsRs:
 
     def calculate_beta_r2(self, window):
         # calculate one day's beta and r_2
-        if len(self.handler.sequence) < window:
-            return
         high = self.handler.get('high', window)
         low = self.handler.get('low', window)
         beta = []
@@ -33,8 +31,6 @@ class RsRs:
         self.r_2.append(r_2)
 
     def calculate_rs(self, window):
-        if len(self.betas) < window and len(self.r_2) < window:
-            return
         betas, r_2 = np.array(self.betas[-window:]), np.array(self.r_2[-1])
         z_score = (betas[-1] - betas.mean(axis=0)) / betas.std(axis=0)
         rs = z_score * r_2 * betas[-1]
@@ -42,8 +38,6 @@ class RsRs:
         self.rs.append(rs)
 
     def get_stocks_dict(self):
-        if len(self.rs) == 0:
-            return {'long': [], 'short': [], 'close': []}
         long = np.where(np.logical_and(self.rs[-1] > np.percentile(self.rs[-1], 90), self.rs[-1] > 0.7))[0].tolist()
         short = np.where(np.logical_and(self.rs[-1] < np.percentile(self.rs[-1], 10), self.rs[-1] < -0.7))[0].tolist()
         close = []
@@ -60,13 +54,15 @@ class RsRs:
                                  volume=self.handler.get('volume')[0],
                                  capital=self.handler.get('capital')[0],
                                  position=self.handler.get('positions')[0])
-            self.calculate_beta_r2(window_1)
-            self.calculate_rs(window_2)
+            if len(self.handler.sequence) > window_1:
+                self.calculate_beta_r2(window_1)
+            if len(self.betas) > window_2 and len(self.r_2) > window_2:
+                self.calculate_rs(window_2)
             if len(self.rs) > 0:
                 self.executor.add_order(self.get_stocks_dict())
-            self.executor.calculate_target()
-            if not self.executor.check():
-                self.handler.order(self.executor.target_position)
+                self.executor.calculate_target()
+                if not self.executor.check():
+                    self.handler.order(self.executor.target_position)
 
 
 if __name__ == '__main__':

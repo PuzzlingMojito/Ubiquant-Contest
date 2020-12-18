@@ -19,7 +19,7 @@ def change_position(old, target, volume):
 
 
 class Executor:
-    def __init__(self, max_pct=0.5):
+    def __init__(self, max_pct=0.8):
         self.price = None
         self.volume = None
         self.capital = None
@@ -36,7 +36,12 @@ class Executor:
         direction[self.order['long']] = 1.0
         direction[self.order['short']] = -1.0
         direction[self.order['close']] = 0.0
-        target = (direction * (self.max_pct * self.capital / np.sum(direction != 0))) / self.price
+        long = np.argwhere(direction > 0).reshape(-1).tolist()
+        short = np.argwhere(direction < 0).reshape(-1).tolist()
+        target = np.zeros(len(self.position))
+        if len(long) != 0 and len(short) != 0:
+            target[long] = ((self.max_pct * 0.5 * self.capital) / len(long)) / self.price[long]
+            target[short] = (-(self.max_pct * 0.5 * self.capital) / len(short)) / self.price[short]
         op = np.vectorize(change_position)
         self.target_position = op(self.position, target, self.volume)
         self.adjust()
@@ -48,6 +53,7 @@ class Executor:
             return np.all(np.isclose(self.position, self.target_position, rtol=0.1))
 
     def adjust(self):
+        logging.info('      adjust...')
         long_stocks = np.where(self.target_position > 0)
         short_stocks = np.where(self.target_position < 0)
         position = abs(self.target_position)
@@ -69,6 +75,7 @@ class Executor:
             if (np.max(amount) < 0.1 * np.sum(amount) or isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1)) and \
                     isclose(np.sum(amount[long_stocks]), np.sum(amount[short_stocks]), abs_tol=1):
                 break
+        logging.info('      adjust finished!')
         self.target_position[long_stocks] = position[long_stocks]
         self.target_position[short_stocks] = -position[short_stocks]
 
