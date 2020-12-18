@@ -42,6 +42,8 @@ class Executor:
         if len(long) != 0 and len(short) != 0:
             target[long] = ((self.max_pct * 0.5 * self.capital) / len(long)) / self.price[long]
             target[short] = (-(self.max_pct * 0.5 * self.capital) / len(short)) / self.price[short]
+        # if len(long) != 0:
+        #     target[long] = ((self.max_pct * 0.5 * self.capital) / len(long)) / self.price[long]
         op = np.vectorize(change_position)
         self.target_position = op(self.position, target, self.volume)
         self.adjust()
@@ -75,6 +77,8 @@ class Executor:
             if (np.max(amount) < 0.1 * np.sum(amount) or isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1)) and \
                     isclose(np.sum(amount[long_stocks]), np.sum(amount[short_stocks]), abs_tol=1):
                 break
+            # if np.max(amount) < 0.1 * np.sum(amount) or isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1):
+            #     break
         # logging.info('      adjust finished!')
         self.target_position[long_stocks] = position[long_stocks]
         self.target_position[short_stocks] = -position[short_stocks]

@@ -7,14 +7,6 @@ import numpy as np
 from math import isclose
 from rpc_package import contest_pb2, question_pb2_grpc, contest_pb2_grpc, question_pb2
 from google.protobuf.json_format import MessageToDict
-logging.basicConfig(
-    filename='mom.log',
-    filemode='w',
-    level=logging.INFO,
-    format='%(asctime)s.%(msecs)03d-%(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-)
-
 question = '47.103.23.116:56701'
 contest = '47.103.23.116:56702'
 passwd = 'eROzSpSO'
@@ -52,7 +44,7 @@ class DataHandler:
             client = question_pb2_grpc.QuestionStub(channel=conn)
             response = client.get_question(question_pb2.QuestionRequest(user_id=9, sequence=sequence))
             if response.sequence == -1:
-                time.sleep(0.1)
+                time.sleep(3)
             else:
                 self.sequence.append(response.sequence)
                 response = MessageToDict(response, including_default_value_fields=True)

@@ -8,13 +8,6 @@ import numpy as np
 from math import isclose
 from rpc_package import contest_pb2, question_pb2_grpc, contest_pb2_grpc, question_pb2
 from google.protobuf.json_format import MessageToDict
-logging.basicConfig(
-    filename='mom.log',
-    filemode='w',
-    level=logging.INFO,
-    format='%(asctime)s.%(msecs)03d-%(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-)
 
 question = '47.103.23.116:56701'
 contest = '47.103.23.116:56702'
@@ -31,6 +24,7 @@ class OfflineDataHandler:
         self.position = np.zeros(351)
         self.cash = None
         self.capital = None
+        self.capitals = []
         self.data = {field: [] for field in list(ticker_fields.keys()) + asset_fields}
         self.provider = pd.read_csv('./notebooks/CONTEST_DATA_IN_SAMPLE_1.csv', header=None)
         self.provider.columns = ['sequence', 'code', 'open', 'high', 'low', 'close', 'volume']
@@ -38,12 +32,13 @@ class OfflineDataHandler:
         self.login()
 
     def login(self):
-        conn = grpc.insecure_channel(contest)
-        client = contest_pb2_grpc.ContestStub(channel=conn)
-        response = client.login(contest_pb2.LoginRequest(user_id=9, user_pin=passwd))
-        self.init_capital = response.init_capital
-        self.cash = response.init_capital
-        self.capital = response.init_capital
+        # conn = grpc.insecure_channel(contest)
+        # client = contest_pb2_grpc.ContestStub(channel=conn)
+        # response = client.login(contest_pb2.LoginRequest(user_id=9, user_pin=passwd))
+        self.init_capital = 5e8
+        self.cash = self.init_capital
+        self.capital = self.init_capital
+        self.capitals.append(self.init_capital)
 
     def get_next(self):
         # TODO: has_next_question
@@ -66,8 +61,11 @@ class OfflineDataHandler:
     def order(self, position):
         price = self.provider[self.provider.index == self.sequence[-1] + 1]['close'].values
         cash_change = np.sum(self.position * price - position * price)
+        fees = np.sum(np.abs(position - self.position) * price) * 0.0002
         self.cash += cash_change
+        self.cash -= fees
         self.capital = self.cash + np.sum(position * price)
+        self.capitals.append(self.capital)
         self.position = position
 
     def get(self, field, window=1):
@@ -81,10 +79,7 @@ class OfflineDataHandler:
 
 if __name__ == '__main__':
     handler = OfflineDataHandler()
-    while True:
-        handler.get_next()
-        handler.order()
-        print(handler.capital)
+
 
 
 

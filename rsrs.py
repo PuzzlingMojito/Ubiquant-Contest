@@ -1,11 +1,19 @@
 import numpy as np
 from scipy.stats import linregress
 from data_handler import DataHandler
+from offline_data_handler import OfflineDataHandler
 from execution import Executor
 from math import isclose
 import logging
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
+logging.basicConfig(
+    filename='rsrs.log',
+    filemode='w',
+    level=logging.INFO,
+    format='%(asctime)s.%(msecs)03d-%(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
 
 
 class RsRs:
@@ -66,8 +74,8 @@ class RsRs:
 
 
 if __name__ == '__main__':
-    handler = DataHandler()
+    handler = OfflineDataHandler()
     executor = Executor()
     strategy = RsRs(handler, executor)
-    strategy.run(60, 60)
+    strategy.run(300, 16)
 
