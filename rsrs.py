@@ -38,8 +38,8 @@ class RsRs:
         self.rs.append(rs)
 
     def get_stocks_dict(self):
-        long = np.where(np.logical_and(self.rs[-1] > np.percentile(self.rs[-1], 90), self.rs[-1] > 0.7))[0].tolist()
-        short = np.where(np.logical_and(self.rs[-1] < np.percentile(self.rs[-1], 10), self.rs[-1] < -0.7))[0].tolist()
+        long = np.where(np.logical_and(self.rs[-1] > np.percentile(self.rs[-1], 5), self.rs[-1] > 0.7))[0].tolist()
+        short = np.where(np.logical_and(self.rs[-1] < np.percentile(self.rs[-1], 5), self.rs[-1] < -0.7))[0].tolist()
         close = []
         logging.info('len_l:{:d}, len_s:{:d}'.format(len(long), len(short)))
         stock_dict = {'long': long,
@@ -69,5 +69,5 @@ if __name__ == '__main__':
     handler = DataHandler()
     executor = Executor()
     strategy = RsRs(handler, executor)
-    strategy.run(300, 16)
+    strategy.run(60, 60)
 

@@ -53,7 +53,7 @@ class Executor:
             return np.all(np.isclose(self.position, self.target_position, rtol=0.1))
 
     def adjust(self):
-        logging.info('      adjust...')
+        # logging.info('      adjust...')
         long_stocks = np.where(self.target_position > 0)
         short_stocks = np.where(self.target_position < 0)
         position = abs(self.target_position)
@@ -75,7 +75,7 @@ class Executor:
             if (np.max(amount) < 0.1 * np.sum(amount) or isclose(np.max(amount), 0.1 * np.sum(amount), abs_tol=1)) and \
                     isclose(np.sum(amount[long_stocks]), np.sum(amount[short_stocks]), abs_tol=1):
                 break
-        logging.info('      adjust finished!')
+        # logging.info('      adjust finished!')
         self.target_position[long_stocks] = position[long_stocks]
         self.target_position[short_stocks] = -position[short_stocks]
 
