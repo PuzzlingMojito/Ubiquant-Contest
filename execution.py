@@ -19,7 +19,7 @@ def change_position(old, target, volume):
 
 
 class Executor:
-    def __init__(self, max_pct=0.8):
+    def __init__(self, max_pct=1.8):
         self.price = None
         self.volume = None
         self.capital = None

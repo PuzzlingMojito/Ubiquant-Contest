@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.stats import linregress
-from scipy.stats import pearsonr
+from scipy.stats import spearmanr
 from offline_data_handler import OfflineDataHandler
 from data_handler import DataHandler
 from execution import Executor
@@ -28,30 +28,28 @@ class Diverge:
         self.diverge = []
 
     def calculate_diverge(self, window):
-        high = self.handler.get('high', window)
-        low = self.handler.get('low', window)
+        opn = self.handler.get('open', window)
         volume = self.handler.get('volume', window)
         div = []
-        for i in range(high.shape[1]):
-            result = pearsonr(high[:, i] / low[:, i], volume[:, i])
+        for i in range(opn.shape[1]):
+            result = spearmanr(opn[:, i], volume[:, i])
             div.append(-result[0])
         self.diverge.append(np.array(div))
 
-    def get_stocks_dict(self, window):
-        positions = self.handler.get('positions', window=5)
+    def get_stocks_dict(self, holding_window):
+        positions = self.handler.get('positions', window=holding_window)
         today = np.sign(positions[-1])
         holding = np.sum(np.abs(np.sign(positions)), axis=0)
-        valid_stocks = np.argwhere(np.logical_or(today == 0.0, holding >= window)).reshape(-1).tolist()
-        long = list(np.argwhere(self.diverge[-1] > 0.5).reshape(-1))
-        close = list(np.argwhere(self.diverge[-1] < 0.5).reshape(-1))
-        short = []
-        long = intersection(long, valid_stocks)
-        close = intersection(close, valid_stocks)
+        valid_stocks = np.argwhere(np.logical_or(today == 0.0, holding >= holding_window)).reshape(-1).tolist()
+        rank = list(np.argsort(-self.diverge[-1]))
+        long = intersection(rank[:int(len(rank) / 5)], valid_stocks)
+        short = intersection(rank[-int(len(rank) / 5):], valid_stocks)
+        close = intersection(rank[int(len(rank) / 5): -int(len(rank) / 5)], valid_stocks)
         logging.info('      l:{:d}, s:{:d}, c:{:d}, v:{:d}'
                      .format(len(long), len(short), len(close), len(valid_stocks)))
         return {'long': long, 'close': close, 'short': short}
 
-    def run(self, window):
+    def run(self, window, holding_window):
         while True:
             self.handler.get_next()
             self.executor.update(price=self.handler.get('close')[0],
@@ -61,7 +59,7 @@ class Diverge:
             if len(self.handler.sequence) > window:
                 self.calculate_diverge(window)
             if len(self.diverge) > 0:
-                stocks_dict = self.get_stocks_dict(window)
+                stocks_dict = self.get_stocks_dict(holding_window)
                 self.executor.add_order(stocks_dict)
                 self.executor.calculate_target()
                 if not self.executor.check():
@@ -73,7 +71,7 @@ if __name__ == '__main__':
     executor = Executor()
     diverge = Diverge(handler, executor)
     try:
-        diverge.run(20)
+        diverge.run(10, 5)
     except ValueError:
         import matplotlib.pyplot as plt
         plt.plot(handler.capitals)

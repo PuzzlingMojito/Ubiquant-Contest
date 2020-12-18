@@ -8,7 +8,7 @@ import logging
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 logging.basicConfig(
-    filename='rsrs.log',
+    filename='offline_rsrs.log',
     filemode='w',
     level=logging.INFO,
     format='%(asctime)s.%(msecs)03d-%(message)s',
@@ -41,13 +41,13 @@ class RsRs:
     def calculate_rs(self, window):
         betas, r_2 = np.array(self.betas[-window:]), np.array(self.r_2[-1])
         z_score = (betas[-1] - betas.mean(axis=0)) / betas.std(axis=0)
-        rs = z_score * r_2 * betas[-1]
+        rs = z_score * r_2
         rs[np.logical_or(np.isinf(rs), np.isnan(rs))] = 0
         self.rs.append(rs)
 
     def get_stocks_dict(self):
-        long = np.where(np.logical_and(self.rs[-1] > np.percentile(self.rs[-1], 5), self.rs[-1] > 0.7))[0].tolist()
-        short = np.where(np.logical_and(self.rs[-1] < np.percentile(self.rs[-1], 5), self.rs[-1] < -0.7))[0].tolist()
+        long = np.where(np.logical_and(self.rs[-1] > np.percentile(self.rs[-1], 5), self.rs[-1] > 1))[0].tolist()
+        short = np.where(np.logical_and(self.rs[-1] < np.percentile(self.rs[-1], 5), self.rs[-1] < -1))[0].tolist()
         close = []
         logging.info('len_l:{:d}, len_s:{:d}'.format(len(long), len(short)))
         stock_dict = {'long': long,
@@ -77,5 +77,11 @@ if __name__ == '__main__':
     handler = OfflineDataHandler()
     executor = Executor()
     strategy = RsRs(handler, executor)
-    strategy.run(300, 16)
+    try:
+        strategy.run(600, 18)
+    except ValueError:
+        import matplotlib.pyplot as plt
+        plt.plot(handler.capitals)
+        plt.show()
+
 
