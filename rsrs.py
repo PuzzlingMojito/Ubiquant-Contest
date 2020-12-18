@@ -67,7 +67,7 @@ class RsRs:
 
 if __name__ == '__main__':
     handler = DataHandler()
-    executor = Executor(max_pct=0.5)
+    executor = Executor()
     strategy = RsRs(handler, executor)
     strategy.run(300, 16)
 

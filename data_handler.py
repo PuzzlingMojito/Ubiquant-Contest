@@ -8,7 +8,7 @@ from math import isclose
 from rpc_package import contest_pb2, question_pb2_grpc, contest_pb2_grpc, question_pb2
 from google.protobuf.json_format import MessageToDict
 logging.basicConfig(
-    filename='mom.log',
+    filename='rsrs.log',
     filemode='w',
     level=logging.INFO,
     format='%(asctime)s.%(msecs)03d-%(message)s',
