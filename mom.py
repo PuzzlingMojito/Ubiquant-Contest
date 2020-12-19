@@ -29,6 +29,7 @@ class Momentum:
     def calculate_mom(self, window):
         if len(self.handler.sequence) > window:
             price = self.handler.get('close', window)
+            price = price[-window:-20, :]
             acc_ret = np.diff(price, axis=0) / price[:-1, :]
             total_ret = (price[-1] - price[0]) / price[0]
             self.mom.append(total_ret - np.var(acc_ret, axis=0))
@@ -69,7 +70,7 @@ if __name__ == '__main__':
     mom = Momentum(handler, executor)
     # mom.run(30, 20)
     try:
-        mom.run(200, 40)
+        mom.run(200, 30)
     except ValueError:
         import matplotlib.pyplot as plt
         plt.plot(handler.capitals)
