@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.stats import linregress
-from scipy.stats import spearmanr
 from offline_data_handler import OfflineDataHandler
 from data_handler import DataHandler
 from execution import Executor
@@ -9,7 +8,7 @@ import logging
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 logging.basicConfig(
-    filename='offline_alpha_103.log',
+    filename='offline_reverse.log',
     filemode='w',
     level=logging.INFO,
     format='%(asctime)s.%(msecs)03d-%(message)s',
@@ -21,33 +20,27 @@ def intersection(a, b):
     return list(set(a).intersection(set(b)))
 
 
-class Alpha103:
+class Reverse:
     def __init__(self, data_handler, ext):
         self.handler = data_handler
         self.executor = ext
-        self.alpha = []
+        self.reverse = []
 
-    def calculate_alpha(self, window):
-        price = self.handler.get('close', window)
-        ret = np.diff(price, axis=0) / price[:-1, :]
-        ret = ret - 1
-        ret = (ret.T / np.sum(ret, axis=1)).T
-        alpha = np.std(ret, axis=0)
-        self.alpha.append(alpha)
+    def calculate_reverse(self, window):
+        if len(self.handler.sequence) > window:
+            price = self.handler.get('close', window)
+            acc_ret = np.diff(price, axis=0) / price[:-1, :]
+            total_ret = (price[-1] - price[0]) / price[0]
+            self.reverse.append(total_ret - np.var(acc_ret, axis=0))
 
     def get_stocks_dict(self, holding_window):
         positions = self.handler.get('positions', window=holding_window)
         today = np.sign(positions[-1])
         holding = np.sum(np.abs(np.sign(positions)), axis=0)
         valid_stocks = np.argwhere(np.logical_or(today == 0.0, holding >= holding_window)).reshape(-1).tolist()
-        # rank = list(np.argsort(-self.alpha[-1]))
-        if len(self.handler.capitals) > 30:
-            direction = np.sign(self.handler.capitals[-1] - self.handler.capitals[-30])
-        else:
-            direction = 1
-        rank = list(np.argsort(-direction * self.alpha[-1]))
-        short = intersection(rank[:int(len(rank) / 10)], valid_stocks)
-        long = intersection(rank[-int(len(rank) / 10):], valid_stocks)
+        rank = list(np.argsort(self.reverse[-1]))
+        short = intersection(rank[-int(len(rank) / 10):], valid_stocks)
+        long = intersection(rank[:int(len(rank) / 10)], valid_stocks)
         close = intersection(rank[int(len(rank) / 10): -int(len(rank) / 10)], valid_stocks)
         logging.info('      l:{:d}, s:{:d}, c:{:d}, v:{:d}'
                      .format(len(long), len(short), len(close), len(valid_stocks)))
@@ -61,8 +54,8 @@ class Alpha103:
                                  capital=self.handler.get('capital')[0],
                                  position=self.handler.get('positions')[0])
             if len(self.handler.sequence) > window:
-                self.calculate_alpha(window)
-            if len(self.alpha) > 0:
+                self.calculate_reverse(window)
+            if len(self.reverse) > 0:
                 stocks_dict = self.get_stocks_dict(holding_window)
                 self.executor.add_order(stocks_dict)
                 self.executor.calculate_target()
@@ -73,11 +66,13 @@ class Alpha103:
 if __name__ == '__main__':
     handler = OfflineDataHandler()
     executor = Executor()
-    alpha = Alpha103(handler, executor)
+    reverse = Reverse(handler, executor)
+    # mom.run(30, 20)
     try:
-        alpha.run(6, 10)
+        reverse.run(30, 10)
     except ValueError:
         import matplotlib.pyplot as plt
         plt.plot(handler.capitals)
         plt.show()
+        print(handler.get_information_ratio())
 

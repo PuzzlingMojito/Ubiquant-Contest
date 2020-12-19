@@ -9,7 +9,7 @@ import logging
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 logging.basicConfig(
-    filename='offline_alpha_103.log',
+    filename='offline_alpha_104.log',
     filemode='w',
     level=logging.INFO,
     format='%(asctime)s.%(msecs)03d-%(message)s',
@@ -21,18 +21,33 @@ def intersection(a, b):
     return list(set(a).intersection(set(b)))
 
 
-class Alpha103:
+class Alpha104:
     def __init__(self, data_handler, ext):
         self.handler = data_handler
         self.executor = ext
         self.alpha = []
 
     def calculate_alpha(self, window):
-        price = self.handler.get('close', window)
-        ret = np.diff(price, axis=0) / price[:-1, :]
-        ret = ret - 1
-        ret = (ret.T / np.sum(ret, axis=1)).T
-        alpha = np.std(ret, axis=0)
+        high = self.handler.get('close', window)
+        low = self.handler.get('high', window)
+        volume = self.handler.get('volume', window)
+        ts_max = np.zeros((8, high.shape[1]))
+        for i in range(8):
+            ts_max[i, :] = np.maximum(low[i, :], low[i+1, :])
+        std_volume = np.zeros((8, high.shape[1]))
+        for i in range(8):
+            std_volume[i, :] = np.std(volume[i:i+10, :], axis=0)
+        rank_high = np.zeros((11, high.shape[1]))
+        rank_low = np.zeros((11, high.shape[1]))
+        for i in range(11):
+            rank_high[i, :] = np.argsort(high[i, :])
+            rank_low[i, :] = np.argsort(low[i, :])
+        rank_sub = rank_high - rank_low
+        cov = np.zeros((8, high.shape[1]))
+        for i in range(8):
+            for j in range(high.shape[1]):
+                cov[i, j] = spearmanr(rank_sub[i:i+3, j], ts_max[i:i+3, j])[0]
+        alpha = np.std(cov - std_volume, axis=0)
         self.alpha.append(alpha)
 
     def get_stocks_dict(self, holding_window):
@@ -40,14 +55,9 @@ class Alpha103:
         today = np.sign(positions[-1])
         holding = np.sum(np.abs(np.sign(positions)), axis=0)
         valid_stocks = np.argwhere(np.logical_or(today == 0.0, holding >= holding_window)).reshape(-1).tolist()
-        # rank = list(np.argsort(-self.alpha[-1]))
-        if len(self.handler.capitals) > 30:
-            direction = np.sign(self.handler.capitals[-1] - self.handler.capitals[-30])
-        else:
-            direction = 1
-        rank = list(np.argsort(-direction * self.alpha[-1]))
-        short = intersection(rank[:int(len(rank) / 10)], valid_stocks)
-        long = intersection(rank[-int(len(rank) / 10):], valid_stocks)
+        rank = list(np.argsort(-self.alpha[-1]))
+        long = intersection(rank[:int(len(rank) / 10)], valid_stocks)
+        short = intersection(rank[-int(len(rank) / 10):], valid_stocks)
         close = intersection(rank[int(len(rank) / 10): -int(len(rank) / 10)], valid_stocks)
         logging.info('      l:{:d}, s:{:d}, c:{:d}, v:{:d}'
                      .format(len(long), len(short), len(close), len(valid_stocks)))
@@ -73,9 +83,9 @@ class Alpha103:
 if __name__ == '__main__':
     handler = OfflineDataHandler()
     executor = Executor()
-    alpha = Alpha103(handler, executor)
+    alpha = Alpha104(handler, executor)
     try:
-        alpha.run(6, 10)
+        alpha.run(20, 5)
     except ValueError:
         import matplotlib.pyplot as plt
         plt.plot(handler.capitals)

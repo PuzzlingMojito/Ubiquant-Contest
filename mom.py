@@ -8,7 +8,7 @@ import logging
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 logging.basicConfig(
-    filename='online_mom.log',
+    filename='offline_mom.log',
     filemode='w',
     level=logging.INFO,
     format='%(asctime)s.%(msecs)03d-%(message)s',
@@ -38,7 +38,7 @@ class Momentum:
         today = np.sign(positions[-1])
         holding = np.sum(np.abs(np.sign(positions)), axis=0)
         valid_stocks = np.argwhere(np.logical_or(today == 0.0, holding >= holding_window)).reshape(-1).tolist()
-        rank = list(np.argsort(self.mom[-1]))
+        rank = list(np.argsort(-self.mom[-1]))
         short = intersection(rank[-int(len(rank) / 10):], valid_stocks)
         long = intersection(rank[:int(len(rank) / 10)], valid_stocks)
         close = intersection(rank[int(len(rank) / 10): -int(len(rank) / 10)], valid_stocks)
@@ -64,15 +64,15 @@ class Momentum:
 
 
 if __name__ == '__main__':
-    handler = DataHandler()
+    handler = OfflineDataHandler()
     executor = Executor()
     mom = Momentum(handler, executor)
-    mom.run(30, 20)
-    # try:
-    #     mom.run(30, 20)
-    # except ValueError:
-    #     import matplotlib.pyplot as plt
-    #     plt.plot(handler.capitals)
-    #     plt.show()
-    #     print(handler.get_information_ratio())
+    # mom.run(30, 20)
+    try:
+        mom.run(200, 40)
+    except ValueError:
+        import matplotlib.pyplot as plt
+        plt.plot(handler.capitals)
+        plt.show()
+        print(handler.get_information_ratio())
 
