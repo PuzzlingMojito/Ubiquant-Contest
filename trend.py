@@ -8,7 +8,7 @@ import logging
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 logging.basicConfig(
-    filename='online_mom.log',
+    filename='offline_trend.log',
     filemode='w',
     level=logging.INFO,
     format='%(asctime)s.%(msecs)03d-%(message)s',
@@ -20,13 +20,15 @@ def intersection(a, b):
     return list(set(a).intersection(set(b)))
 
 
-class Momentum:
+class Trend:
     def __init__(self, data_handler, ext):
         self.handler = data_handler
         self.executor = ext
         self.mom = []
 
-    def calculate_mom(self, window):
+    def calculate_trend(self, window):
+        lags = [3, 5, 10, 20, 50, 100, 200, 300, 400]
+        lags = [lag < window for lag in lags]
         if len(self.handler.sequence) > window:
             price = self.handler.get('close', window)
             price = price[-window:-20, :]
@@ -67,13 +69,12 @@ class Momentum:
 if __name__ == '__main__':
     handler = DataHandler()
     executor = Executor()
-    mom = Momentum(handler, executor)
-    mom.run(200, 30)
-    # try:
-    #     mom.run(200, 30)
-    # except ValueError:
-    #     import matplotlib.pyplot as plt
-    #     plt.plot(handler.capitals)
-    #     plt.show()
-    #     print(handler.get_information_ratio())
+    trend = Trend(handler, executor)
+    # mom.run(200, 30)
+    try:
+        trend.run(200, 30)
+    except ValueError:
+        import matplotlib.pyplot as plt
+        plt.plot(handler.capitals)
+        plt.show()
 

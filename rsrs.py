@@ -78,7 +78,7 @@ if __name__ == '__main__':
     executor = Executor()
     strategy = RsRs(handler, executor)
     try:
-        strategy.run(600, 18)
+        strategy.run(60, 60)
     except ValueError:
         import matplotlib.pyplot as plt
         plt.plot(handler.capitals)

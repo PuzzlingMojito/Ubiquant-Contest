@@ -8,7 +8,7 @@ import logging
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 logging.basicConfig(
-    filename='offline_reverse.log',
+    filename='online_reverse.log',
     filemode='w',
     level=logging.INFO,
     format='%(asctime)s.%(msecs)03d-%(message)s',
@@ -38,10 +38,10 @@ class Reverse:
         today = np.sign(positions[-1])
         holding = np.sum(np.abs(np.sign(positions)), axis=0)
         valid_stocks = np.argwhere(np.logical_or(today == 0.0, holding >= holding_window)).reshape(-1).tolist()
-        rank = list(np.argsort(self.reverse[-1]))
-        short = intersection(rank[-int(len(rank) / 10):], valid_stocks)
-        long = intersection(rank[:int(len(rank) / 10)], valid_stocks)
-        close = intersection(rank[int(len(rank) / 10): -int(len(rank) / 10)], valid_stocks)
+        rank = list(np.argsort(-self.reverse[-1]))
+        short = intersection(rank[-int(len(rank) / 5):], valid_stocks)
+        long = intersection(rank[:int(len(rank) / 5)], valid_stocks)
+        close = intersection(rank[int(len(rank) / 5): -int(len(rank) / 5)], valid_stocks)
         logging.info('      l:{:d}, s:{:d}, c:{:d}, v:{:d}'
                      .format(len(long), len(short), len(close), len(valid_stocks)))
         return {'long': long, 'close': close, 'short': short}
@@ -64,15 +64,15 @@ class Reverse:
 
 
 if __name__ == '__main__':
-    handler = OfflineDataHandler()
+    handler = DataHandler()
     executor = Executor()
     reverse = Reverse(handler, executor)
-    # mom.run(30, 20)
-    try:
-        reverse.run(30, 10)
-    except ValueError:
-        import matplotlib.pyplot as plt
-        plt.plot(handler.capitals)
-        plt.show()
-        print(handler.get_information_ratio())
+    reverse.run(30, 20)
+    # try:
+    #     reverse.run(30, 10)
+    # except ValueError:
+    #     import matplotlib.pyplot as plt
+    #     plt.plot(handler.capitals)
+    #     plt.show()
+    #     print(handler.get_information_ratio())
 
